@@ -1,0 +1,16 @@
+# python_env
+env_isaacsim/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+#vscode
+.vscode/
+
+# windows
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
