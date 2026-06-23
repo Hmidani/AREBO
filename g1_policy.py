@@ -2,7 +2,7 @@ from typing import Optional
 import numpy as np
 from isaacsim.core.utils.rotations import quat_to_rot_matrix
 from isaacsim.core.utils.types import ArticulationAction
-from isaacsim.robot.policy.examples.controllers import PolicyController
+from Controlll.controllers.policy_controller import PolicyController
 from isaacsim.storage.native import get_assets_root_path
 
 class G1FlatTerrainPolicy(PolicyController):
@@ -86,4 +86,6 @@ class G1FlatTerrainPolicy(PolicyController):
         self._policy_counter += 1
 
     def initialize(self):
-        return super().initialize(set_articulation_props=False)
+        self.robot.initialize()
+        return True
+        #return super().initialize(set_articulation_props=False)

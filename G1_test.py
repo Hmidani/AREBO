@@ -23,7 +23,25 @@ from g1_policy import G1FlatTerrainPolicy
 import omni.appwindow  # Contains handle to keyboard
 import carb.input 
 
+first_step = True
+reset_needed = False
+robots = []
 
+# initialize robot on first step, run robot advance
+def on_physics_step(step_size) -> None:
+    global first_step
+    global reset_needed
+    if first_step:
+        for robot in robots:
+            robot.initialize()
+        first_step = False
+    elif reset_needed:
+        my_world.reset(True)
+        reset_needed = False
+        first_step = True
+    else:
+        for robot in robots:
+            robot.forward(step_size, base_command)
 
 
 my_world = World(stage_units_in_meters=1.0, physics_dt=1 / 200, rendering_dt=8 / 200)
@@ -40,7 +58,6 @@ if assets_root_path is None:
 
 humanoid_asset_path = assets_root_path + "/Isaac/Robots/Unitree/G1/g1.usd"
 
-robots = []
 g1 = G1FlatTerrainPolicy(
     prim_path="/World/G1_",
     name="G1_",
@@ -59,7 +76,7 @@ humanoid.set_world_poses(positions=np.array([[0, 0, 1.05]]) / get_stage_units())
 
 
 my_world.reset()
-
+my_world.add_physics_callback("physics_step", callback_fn=on_physics_step)
 
 # robot command
 base_command = np.zeros(3)
@@ -98,13 +115,13 @@ class RobotKeyboardController:
 keyboard_controller = RobotKeyboardController()
 
 step_size = 1.0 / 200.0
+
 while simulation_app.is_running():
     my_world.step(render=True)
     if my_world.is_stopped():
         reset_needed = True
     if my_world.is_playing():
-        for robot in robots:
-            robot.forward(step_size, base_command)
+        base_command = keyboard_controller.base_command
 
 
 simulation_app.close()
