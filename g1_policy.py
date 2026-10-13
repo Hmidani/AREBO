@@ -16,7 +16,6 @@ class G1FlatTerrainPolicy(PolicyController):
         usd_path: Optional[str] = None,
         position: Optional[np.ndarray] = None,
         orientation: Optional[np.ndarray] = None,
-        policy_file_path: Optional[str] = None, 
     ) -> None:
        
         assets_root_path = get_assets_root_path()
@@ -24,21 +23,25 @@ class G1FlatTerrainPolicy(PolicyController):
         
         if usd_path is None:
             usd_path = assets_root_path + "/Isaac/Robots/Unitree/G1/g1.usd"
+
+        if position is None:
+            position = np.array([0.0, 0.0, 0.78])  # Default position for G1 robot
            
         super().__init__(name, prim_path, root_path, usd_path, position, orientation)
        
         
-        if policy_file_path:
-            self.load_policy(policy_file_path, env_yaml_path=None)
-       
-        self._action_scale = 0.5
-       
-      
-        self.num_g1_dof = 23
-        self._previous_action = np.zeros(self.num_g1_dof)
-        self._policy_counter = 0
+        self.load_policy(
+            assets_root_path + "C:\isaacsim\Areboprojekt\config\policy.onnx",
+            assets_root_path + "C:\isaacsim\Areboprojekt\config\deploy.yaml",
+        )
 
-    def _compute_observation(self, command):
+        self.num_actions = 23  # Number of actions for G1 robot
+        self._action_scale = 0.25
+        self._previous_action = np.zeros(self.num_actions)
+        self._policy_counter = 0
+        self._decimation = 4  # Decimation factor for policy execution
+
+    def _compute_observation(self, command: np.ndarray):
    
         lin_vel_I = self.robot.get_linear_velocity()
         ang_vel_I = self.robot.get_angular_velocity()
@@ -50,7 +53,7 @@ class G1FlatTerrainPolicy(PolicyController):
         ang_vel_b = np.matmul(R_BI, ang_vel_I)
         gravity_b = np.matmul(R_BI, np.array([0.0, 0.0, -1.0]))
 
-        obs = np.zeros(81)
+        obs = np.zeros(12 + 3 * self.num_actions)  # Adjusted observation size for G1 robot
        
         obs[:3] = lin_vel_b                     # Base lin vel
         obs[3:6] = ang_vel_b                    # Base ang vel
@@ -66,18 +69,11 @@ class G1FlatTerrainPolicy(PolicyController):
        
         return obs
 
-    def forward(self, dt, command):
+    def forward(self, dt: float, command: np.ndarray):
         
         if self._policy_counter % self._decimation == 0:
             obs = self._compute_observation(command)
-           
-        
-            if hasattr(self, '_compute_action'):
-                self.action = self._compute_action(obs)
-            else:
-        
-                self.action = np.zeros(self.num_g1_dof)
-               
+            self.action = self._compute_action(obs)   
             self._previous_action = self.action.copy()
 
         action = ArticulationAction(joint_positions=self.default_pos + (self.action * self._action_scale))
@@ -86,6 +82,5 @@ class G1FlatTerrainPolicy(PolicyController):
         self._policy_counter += 1
 
     def initialize(self):
-        self.robot.initialize()
-        return True
-        #return super().initialize(set_articulation_props=False)
+        #self.robot.initialize()
+        return super().initialize(set_articulation_props=False)
